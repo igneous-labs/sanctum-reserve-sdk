@@ -1,0 +1,26 @@
+use borsh::{BorshDeserialize, BorshSerialize};
+
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "wasm",
+    derive(tsify_next::Tsify),
+    tsify(into_wasm_abi, from_wasm_abi, large_number_types_as_bigints)
+)]
+pub struct Pool {
+    /// The authority authorized to set fees
+    pub fee_authority: [u8; 32],
+
+    /// The pool's lp token mint
+    pub lp_mint: [u8; 32],
+
+    /// The last known value of total number of lamports in stake accounts
+    /// owned by the pool that have not been reclaimed yet.
+    /// The total SOL owned by a pool accounted for can be calculated by taking
+    /// incoming_stake + pool_sol_reserves.lamports
+    pub incoming_stake: u64,
+}
+
+impl Pool {
+    inherent_borsh_serde!();
+}
