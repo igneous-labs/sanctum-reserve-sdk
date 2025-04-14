@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use const_crypto::bs58;
 use mollusk_svm::{
     program::{create_keyed_account_for_builtin_program, keyed_account_for_system_program},
@@ -9,11 +11,12 @@ use sanctum_reserve_core::{
     SYSVAR_CLOCK, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER, UNSTAKE_PROGRAM,
 };
 use solana_account::Account;
-use solana_instruction::Instruction;
+use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 
 use crate::common::{
     metas_from_keys_signer_writer, mollusk_unstake_prog, payer_account, unstake_mainnet_accounts,
+    KeyedUiAccount,
 };
 
 #[test]
@@ -61,6 +64,7 @@ fn unstake_fixture() {
     let mollusk = mollusk_unstake_prog();
 
     let user = Pubkey::new_unique();
+    let referrer = Pubkey::from_str("Gu7aUxceG5zETeSPRjkzYb9nfBGwwXbdkJaY7BK8xpqr").unwrap();
     let stake_account_addr = bs58::decode_pubkey("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh");
 
     let stake_account_record_seeds = stake_account_record_seeds(&POOL, &stake_account_addr);
@@ -73,6 +77,21 @@ fn unstake_fixture() {
         &Pubkey::from(UNSTAKE_PROGRAM),
     )
     .0;
+
+    let pool_account = KeyedUiAccount::from_test_fixtures_file("pool");
+    let pool = reserve_core::Pool::borsh_de(&pool_account.account_data().as_slice()[8..]).unwrap();
+
+    let fee_account = KeyedUiAccount::from_test_fixtures_file("fee");
+    let fee = reserve_core::Fee::borsh_de(&fee_account.account_data().as_slice()[8..]).unwrap();
+
+    let protocol_fee_account = KeyedUiAccount::from_test_fixtures_file("protocol-fee");
+    let protocol_fee =
+        reserve_core::ProtocolFee::borsh_de(&protocol_fee_account.account_data().as_slice()[8..])
+            .unwrap();
+
+    let quote = pool
+        .quote_unstake(&fee, &protocol_fee, 409374014407718, 1002282880, true)
+        .expect("Quote should be valid");
 
     let keys = UnstakeIxPrefixKeysOwned::default()
         .with_mainnet_const_pdas()
@@ -89,7 +108,10 @@ fn unstake_fixture() {
 
     let ix = Instruction {
         program_id: Pubkey::new_from_array(UNSTAKE_PROGRAM),
-        accounts: metas,
+        accounts: metas
+            .into_iter()
+            .chain([AccountMeta::new(referrer, false)])
+            .collect::<Vec<_>>(),
         data: data.to_buf().into(),
     };
 
@@ -103,6 +125,7 @@ fn unstake_fixture() {
             mollusk.sysvars.keyed_account_for_clock_sysvar(),
             (user, payer_account(1_000_000_000)),
             (stake_account_record_pubkey, Account::default()),
+            (referrer, Account::default()),
         ])
         .collect::<Vec<_>>();
 
@@ -115,6 +138,8 @@ fn unstake_fixture() {
     assert!(raw_result.is_ok());
 
     let user_res = resulting_accounts.iter().find(|a| a.0 == user).unwrap();
+
+    let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
 
     let stake_acc_rec_res = reserve_core::StakeAccountRecord::borsh_de(
         &resulting_accounts
@@ -149,6 +174,13 @@ fn unstake_fixture() {
     let user_delta = user_res.1.lamports - 1_000_000_000;
 
     // 1002240 is the amount of SOL pool sol reserves paid for rent exemption of the record
-    assert_eq!(user_delta + fees_earned + 1002240, pool_sol_reserves_delta);
+    assert_eq!(
+        quote.referrer_fee + user_delta + fees_earned + 1002240,
+        pool_sol_reserves_delta
+    );
     assert_eq!(stake_acc_rec_res.lamports_at_creation, 1002282880);
+    assert_eq!(quote.stake_account_lamports, 1002282880);
+    assert_eq!(quote.lamports_to_unstaker, user_delta);
+    assert_eq!(quote.fee, fees_earned);
+    assert_eq!(quote.referrer_fee, referrer_res.1.lamports);
 }

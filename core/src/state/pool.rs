@@ -1,5 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::UnstakeQuote;
+
+use super::{Fee, ProtocolFee};
+
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -19,6 +23,47 @@ pub struct Pool {
     /// The total SOL owned by a pool accounted for can be calculated by taking
     /// incoming_stake + pool_sol_reserves.lamports
     pub incoming_stake: u64,
+}
+
+impl Pool {
+    pub fn quote_unstake(
+        &self,
+        fee_account: &Fee,
+        protocol_fee: &ProtocolFee,
+        pool_sol_reserves: u64,
+        stake_account_lamports: u64,
+        with_referrer: bool,
+    ) -> Option<UnstakeQuote> {
+        let fee_lamports = fee_account.fee.apply(
+            self.incoming_stake,
+            pool_sol_reserves,
+            stake_account_lamports,
+        )?;
+
+        let lamports_to_unstaker = stake_account_lamports.checked_sub(fee_lamports)?;
+        let protocol_fee_lamports = protocol_fee.fee_ratio.apply(fee_lamports)?.fee();
+
+        match with_referrer {
+            true => {
+                let referrer_fee_lamports = protocol_fee
+                    .referrer_fee_ratio
+                    .apply(protocol_fee_lamports)?;
+
+                Some(UnstakeQuote {
+                    stake_account_lamports,
+                    lamports_to_unstaker,
+                    fee: referrer_fee_lamports.rem(),
+                    referrer_fee: referrer_fee_lamports.fee(),
+                })
+            }
+            false => Some(UnstakeQuote {
+                stake_account_lamports,
+                lamports_to_unstaker,
+                fee: protocol_fee_lamports,
+                referrer_fee: 0,
+            }),
+        }
+    }
 }
 
 impl Pool {

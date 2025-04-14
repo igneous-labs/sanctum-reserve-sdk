@@ -15,6 +15,7 @@ const-crypto = { workspace = true }
 generic-array-struct = { workspace = true }
 sanctum-fee-ratio = { workspace = true }
 sanctum-u64-ratio = { workspace = true }
+uint = { workspace = true }
 
 # optional
 serde = { workspace = true, default-features = false, features = ["derive"], optional = true }

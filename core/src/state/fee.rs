@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::Rational;
+use crate::{math::PreciseNumber, Rational};
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -60,6 +60,45 @@ pub struct LiquidityLinearParams {
     /// The fee applied to a swap that leaves
     /// no liquidity remaining in the SOL reserves account
     pub zero_liq_remaining: Rational,
+}
+
+impl FeeEnum {
+    pub fn apply(
+        &self,
+        pool_incoming_stake: u64,
+        sol_reserves_lamports: u64,
+        stake_account_lamports: u64,
+    ) -> Option<u64> {
+        let ratio = match self {
+            Self::Flat { ratio } => ratio.into_precise_number()?,
+            Self::LiquidityLinear { params } => {
+                let zero_liq_fee = params.zero_liq_remaining.into_precise_number()?;
+                let max_liq_fee = params.max_liq_remaining.into_precise_number()?;
+                let owned_lamports =
+                    (pool_incoming_stake as u128).checked_add(sol_reserves_lamports as u128)?;
+
+                let slope_num = zero_liq_fee.checked_sub(&max_liq_fee)?;
+                let slope_denom = PreciseNumber::new(owned_lamports)?;
+
+                let incoming_plus_stake =
+                    (pool_incoming_stake as u128).checked_add(stake_account_lamports as u128)?;
+                let num = slope_denom
+                    .checked_mul(&max_liq_fee)?
+                    .checked_div(&slope_num)?
+                    .checked_add(&PreciseNumber::new(incoming_plus_stake)?)?;
+                let denom = slope_denom
+                    .checked_div(&slope_num)?
+                    .checked_add(&PreciseNumber::new(stake_account_lamports as u128)?)?;
+                num.checked_div(&denom)?
+            }
+        };
+
+        PreciseNumber::new(stake_account_lamports as u128)?
+            .checked_mul(&ratio)?
+            .ceiling()?
+            .to_imprecise()
+            .and_then(|v| u64::try_from(v).ok())
+    }
 }
 
 impl Fee {

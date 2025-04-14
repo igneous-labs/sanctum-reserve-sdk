@@ -2,6 +2,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use sanctum_fee_ratio::AftFee;
 use sanctum_u64_ratio::{Floor, Ratio};
 
+use crate::math::PreciseNumber;
+
 // TODO: derivation of Eq might be wrong since fraction equality is not necessarily bit equality,
 // but this is how upstream does it
 #[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
@@ -35,6 +37,11 @@ impl Rational {
             Some(f) => f,
         };
         f.apply(amt)
+    }
+
+    #[inline]
+    pub(crate) fn into_precise_number(self) -> Option<PreciseNumber> {
+        PreciseNumber::new(self.num as u128)?.checked_div(&PreciseNumber::new(self.denom as u128)?)
     }
 }
 
