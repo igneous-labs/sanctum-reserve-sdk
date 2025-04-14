@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::Rational;
+use crate::{internal_utils::AnchorAccount, Rational};
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -23,6 +23,11 @@ pub struct ProtocolFee {
     pub referrer_fee_ratio: Rational,
 }
 
+impl AnchorAccount for ProtocolFee {
+    const DISCM: [u8; 8] = [121, 127, 98, 139, 72, 110, 44, 118];
+}
+
 impl ProtocolFee {
     inherent_borsh_serde!();
+    inherent_anchor_serde!();
 }

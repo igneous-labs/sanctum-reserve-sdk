@@ -1,5 +1,7 @@
 use const_crypto::bs58;
 
+use crate::{fee_seeds, flash_account_seeds, flash_loan_fee_seeds, protocol_fee_seeds};
+
 // Programs
 
 pub const UNSTAKE_PROGRAM: [u8; 32] =
@@ -19,20 +21,35 @@ pub const STAKE_PROGRAM: [u8; 32] =
 // Program Accounts
 
 pub const POOL: [u8; 32] = bs58::decode_pubkey("FypPtwbY3FUfzJUtXHSyVRokVKG2jKtH29FmK4ebxRSd");
-
-pub const FEE: [u8; 32] = bs58::decode_pubkey("5Pcu8WeQa3VbBz2vdBT49Rj4gbS4hsnfzuL1LmuRaKFY");
-
-pub const PROTOCOL_FEE: [u8; 32] =
-    bs58::decode_pubkey("2hN9UhvRFVfPYKL6rZJ5YiLEPCLTpN755pgwDJHWgFbU");
-
 pub const PROTOCOL_FEE_VAULT: [u8; 32] =
     bs58::decode_pubkey("EeQmNqm1RcQnee8LTyx6ccVG9FnR8TezQuw2JXq2LC1T");
-
 pub const POOL_SOL_RESERVES: [u8; 32] =
     bs58::decode_pubkey("3rBnnH9TTgd3xwu48rnzGsaQkSr1hR64nY71DrDt6VrQ");
 
-pub const FLASH_ACCOUNT: [u8; 32] =
-    bs58::decode_pubkey("BvCe729YxGXqgyVBW4r4R8S7ypkYm7KUyzVbTMai8kUc");
+const FEE_PDA: ([u8; 32], u8) = {
+    let (s1, s2) = fee_seeds(&POOL);
+    const_crypto::ed25519::derive_program_address(&[s1, s2], &UNSTAKE_PROGRAM)
+};
+pub const FEE: [u8; 32] = FEE_PDA.0;
+pub const FEE_BUMP: u8 = FEE_PDA.1;
 
-pub const FLASH_LOAN_FEE: [u8; 32] =
-    bs58::decode_pubkey("6pf1eJA1C97znNC1m12qFGTWoq4KCQXJKrvzksFWmd2D");
+const PROTOCOL_FEE_PDA: ([u8; 32], u8) = {
+    let seed = protocol_fee_seeds();
+    const_crypto::ed25519::derive_program_address(&[seed], &UNSTAKE_PROGRAM)
+};
+pub const PROTOCOL_FEE: [u8; 32] = PROTOCOL_FEE_PDA.0;
+pub const PROTOCOL_FEE_BUMP: u8 = PROTOCOL_FEE_PDA.1;
+
+const FLASH_ACCOUNT_PDA: ([u8; 32], u8) = {
+    let (s1, s2) = flash_account_seeds(&POOL);
+    const_crypto::ed25519::derive_program_address(&[s1, s2], &UNSTAKE_PROGRAM)
+};
+pub const FLASH_ACCOUNT: [u8; 32] = FLASH_ACCOUNT_PDA.0;
+pub const FLASH_ACCOUNT_BUMP: u8 = FLASH_ACCOUNT_PDA.1;
+
+const FLASH_LOAN_FEE_PDA: ([u8; 32], u8) = {
+    let (s1, s2) = flash_loan_fee_seeds(&POOL);
+    const_crypto::ed25519::derive_program_address(&[s1, s2], &UNSTAKE_PROGRAM)
+};
+pub const FLASH_LOAN_FEE: [u8; 32] = FLASH_LOAN_FEE_PDA.0;
+pub const FLASH_LOAN_FEE_BUMP: u8 = FLASH_LOAN_FEE_PDA.1;

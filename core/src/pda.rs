@@ -19,7 +19,7 @@ pub const fn flash_loan_fee_seeds(pool: &[u8; 32]) -> (&[u8; 32], &[u8; 12]) {
 }
 
 #[inline]
-pub const fn protocol_fee_seeds<'a>() -> &'a [u8; 12] {
+pub const fn protocol_fee_seeds() -> &'static [u8; 12] {
     &PROTOCOL_FEE_SEED
 }
 

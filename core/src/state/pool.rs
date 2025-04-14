@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::UnstakeQuote;
+use crate::{internal_utils::AnchorAccount, UnstakeQuote};
 
 use super::{Fee, ProtocolFee};
 
@@ -52,20 +52,27 @@ impl Pool {
                 Some(UnstakeQuote {
                     stake_account_lamports,
                     lamports_to_unstaker,
-                    fee: referrer_fee_lamports.rem(),
+                    fee: fee_lamports,
+                    protocol_fee: referrer_fee_lamports.rem(),
                     referrer_fee: referrer_fee_lamports.fee(),
                 })
             }
             false => Some(UnstakeQuote {
                 stake_account_lamports,
                 lamports_to_unstaker,
-                fee: protocol_fee_lamports,
+                fee: fee_lamports,
+                protocol_fee: protocol_fee_lamports,
                 referrer_fee: 0,
             }),
         }
     }
 }
 
+impl AnchorAccount for Pool {
+    const DISCM: [u8; 8] = [241, 154, 109, 4, 17, 177, 109, 188];
+}
+
 impl Pool {
     inherent_borsh_serde!();
+    inherent_anchor_serde!();
 }

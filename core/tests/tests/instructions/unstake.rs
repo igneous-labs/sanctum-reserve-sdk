@@ -79,14 +79,14 @@ fn unstake_fixture() {
     .0;
 
     let pool_account = KeyedUiAccount::from_test_fixtures_file("pool");
-    let pool = reserve_core::Pool::borsh_de(&pool_account.account_data().as_slice()[8..]).unwrap();
+    let pool = reserve_core::Pool::anchor_de(pool_account.account_data().as_slice()).unwrap();
 
     let fee_account = KeyedUiAccount::from_test_fixtures_file("fee");
-    let fee = reserve_core::Fee::borsh_de(&fee_account.account_data().as_slice()[8..]).unwrap();
+    let fee = reserve_core::Fee::anchor_de(fee_account.account_data().as_slice()).unwrap();
 
     let protocol_fee_account = KeyedUiAccount::from_test_fixtures_file("protocol-fee");
     let protocol_fee =
-        reserve_core::ProtocolFee::borsh_de(&protocol_fee_account.account_data().as_slice()[8..])
+        reserve_core::ProtocolFee::anchor_de(protocol_fee_account.account_data().as_slice())
             .unwrap();
 
     let quote = pool
@@ -141,19 +141,19 @@ fn unstake_fixture() {
 
     let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
 
-    let stake_acc_rec_res = reserve_core::StakeAccountRecord::borsh_de(
-        &resulting_accounts
+    let stake_acc_rec_res = reserve_core::StakeAccountRecord::anchor_de(
+        resulting_accounts
             .iter()
             .find(|a| a.0 == stake_account_record_pubkey)
             .expect("Stake account record should exist")
             .1
             .data
-            .as_slice()[8..],
+            .as_slice(),
     )
     .expect("Stake account record invalid data");
 
     // 302977251897 -> previous lamports from fixtures
-    let fees_earned = resulting_accounts
+    let protocol_fees_earned = resulting_accounts
         .iter()
         .find(|a| a.0.to_bytes() == PROTOCOL_FEE_VAULT)
         .expect("Protocol fee vault should exist")
@@ -175,12 +175,12 @@ fn unstake_fixture() {
 
     // 1002240 is the amount of SOL pool sol reserves paid for rent exemption of the record
     assert_eq!(
-        quote.referrer_fee + user_delta + fees_earned + 1002240,
+        quote.referrer_fee + user_delta + protocol_fees_earned + 1002240,
         pool_sol_reserves_delta
     );
     assert_eq!(stake_acc_rec_res.lamports_at_creation, 1002282880);
     assert_eq!(quote.stake_account_lamports, 1002282880);
     assert_eq!(quote.lamports_to_unstaker, user_delta);
-    assert_eq!(quote.fee, fees_earned);
+    assert_eq!(quote.protocol_fee, protocol_fees_earned);
     assert_eq!(quote.referrer_fee, referrer_res.1.lamports);
 }

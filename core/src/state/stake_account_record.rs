@@ -1,5 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::internal_utils::AnchorAccount;
+
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -15,6 +17,11 @@ pub struct StakeAccountRecord {
     pub lamports_at_creation: u64,
 }
 
+impl AnchorAccount for StakeAccountRecord {
+    const DISCM: [u8; 8] = [144, 205, 183, 241, 3, 250, 208, 215];
+}
+
 impl StakeAccountRecord {
     inherent_borsh_serde!();
+    inherent_anchor_serde!();
 }

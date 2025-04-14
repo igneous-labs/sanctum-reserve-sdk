@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{math::PreciseNumber, Rational};
+use crate::{internal_utils::AnchorAccount, math::PreciseNumber, Rational};
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -13,7 +13,6 @@ pub struct Fee {
     pub fee: FeeEnum,
 }
 
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -101,8 +100,13 @@ impl FeeEnum {
     }
 }
 
+impl AnchorAccount for Fee {
+    const DISCM: [u8; 8] = [24, 55, 150, 250, 168, 27, 101, 178];
+}
+
 impl Fee {
     inherent_borsh_serde!();
+    inherent_anchor_serde!();
 }
 
 impl FeeEnum {

@@ -6,7 +6,7 @@ use sanctum_reserve_core::{self as reserve_core, LiquidityLinearParams};
 fn test_pool_serde() {
     let pool_account = KeyedUiAccount::from_test_fixtures_file("pool");
 
-    let pool = reserve_core::Pool::borsh_de(&pool_account.account_data().as_slice()[8..]).unwrap();
+    let pool = reserve_core::Pool::anchor_de(pool_account.account_data().as_slice()).unwrap();
 
     let fee_authority = bs58::encode_pubkey(&pool.fee_authority);
     let lp_mint = bs58::encode_pubkey(&pool.lp_mint);
@@ -24,7 +24,7 @@ fn test_protocol_fee_serde() {
     let protocol_fee_account = KeyedUiAccount::from_test_fixtures_file("protocol-fee");
 
     let protocol_fee =
-        reserve_core::ProtocolFee::borsh_de(&protocol_fee_account.account_data().as_slice()[8..])
+        reserve_core::ProtocolFee::anchor_de(protocol_fee_account.account_data().as_slice())
             .unwrap();
 
     assert_eq!(
@@ -49,7 +49,7 @@ fn test_protocol_fee_serde() {
 fn test_fee_serde() {
     let fee_account = KeyedUiAccount::from_test_fixtures_file("fee");
 
-    let fee = reserve_core::Fee::borsh_de(&fee_account.account_data().as_slice()[8..]).unwrap();
+    let fee = reserve_core::Fee::anchor_de(fee_account.account_data().as_slice()).unwrap();
 
     assert_eq!(
         fee.fee,
@@ -70,8 +70,8 @@ fn test_stake_account_record_serde() {
     let stake_account_record_account =
         KeyedUiAccount::from_test_fixtures_file("stake-account-record");
 
-    let stake_account_record = reserve_core::StakeAccountRecord::borsh_de(
-        &stake_account_record_account.account_data().as_slice()[8..],
+    let stake_account_record = reserve_core::StakeAccountRecord::anchor_de(
+        stake_account_record_account.account_data().as_slice(),
     )
     .unwrap();
 

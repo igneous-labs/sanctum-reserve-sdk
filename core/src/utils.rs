@@ -18,5 +18,8 @@ pub struct UnstakeQuote {
     pub fee: u64,
 
     /// In terms of lamports
+    pub protocol_fee: u64,
+
+    /// In terms of lamports
     pub referrer_fee: u64,
 }
