@@ -27,6 +27,7 @@ pub struct UnstakeMainnet<T> {
     pub protocol_fee: T,
     pub protocol_fee_vault: T,
     pub stake_account: T,
+    pub user_wsol_token: T,
 }
 
 pub type UnstakeMainnetKeyedAccounts = UnstakeMainnet<(Pubkey, Account)>;

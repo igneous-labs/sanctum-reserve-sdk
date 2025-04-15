@@ -54,5 +54,6 @@ pub fn unstake_mainnet_accounts() -> UnstakeMainnetKeyedAccounts {
         load_fixture_account("protocol-fee"),
         load_fixture_account("protocol-fee-vault"),
         load_fixture_account("stake-account"),
+        load_fixture_account("user-wsol-token"),
     ])
 }
