@@ -7,8 +7,9 @@ use mollusk_svm::{
 };
 use sanctum_reserve_core::{
     self as reserve_core, stake_account_record_seeds, UnstakeIxData, UnstakeIxPrefixKeysOwned, FEE,
-    POOL, POOL_SOL_RESERVES, PROTOCOL_FEE, PROTOCOL_FEE_VAULT, STAKE_PROGRAM, SYSTEM_PROGRAM,
-    SYSVAR_CLOCK, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER, UNSTAKE_PROGRAM,
+    POOL, POOL_SOL_RESERVES, PROTOCOL_FEE, PROTOCOL_FEE_VAULT, STAKE_ACCOUNT_RECORD_RENT,
+    STAKE_PROGRAM, SYSTEM_PROGRAM, SYSVAR_CLOCK, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER,
+    UNSTAKE_PROGRAM,
 };
 use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
@@ -63,6 +64,12 @@ fn unstake_keys() {
 fn unstake_fixture() {
     let mollusk = mollusk_unstake_prog();
 
+    let account_fixtures = unstake_mainnet_accounts();
+
+    let protocol_fee_vault_bef = account_fixtures.protocol_fee_vault().1.lamports;
+    let pool_sol_reserves_bef = account_fixtures.pool_sol_reserves().1.lamports;
+    let stake_account_bef = account_fixtures.stake_account().1.lamports;
+
     let user = Pubkey::new_unique();
     let referrer = Pubkey::from_str("Gu7aUxceG5zETeSPRjkzYb9nfBGwwXbdkJaY7BK8xpqr").unwrap();
     let stake_account_addr = bs58::decode_pubkey("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh");
@@ -115,7 +122,9 @@ fn unstake_fixture() {
         data: data.to_buf().into(),
     };
 
-    let accounts = unstake_mainnet_accounts()
+    let accounts = account_fixtures
+        .0
+        .into_iter()
         .chain([
             keyed_account_for_system_program(),
             create_keyed_account_for_builtin_program(
@@ -129,6 +138,8 @@ fn unstake_fixture() {
         ])
         .collect::<Vec<_>>();
 
+    let user_bef = accounts.get(9).unwrap();
+
     let InstructionResult {
         raw_result,
         resulting_accounts,
@@ -137,14 +148,13 @@ fn unstake_fixture() {
 
     assert!(raw_result.is_ok());
 
-    let user_res = resulting_accounts.iter().find(|a| a.0 == user).unwrap();
+    let user_res = resulting_accounts.get(9).unwrap();
 
-    let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
+    let referrer_res = resulting_accounts.get(11).unwrap();
 
     let stake_acc_rec_res = reserve_core::StakeAccountRecord::anchor_de(
         resulting_accounts
-            .iter()
-            .find(|a| a.0 == stake_account_record_pubkey)
+            .get(10)
             .expect("Stake account record should exist")
             .1
             .data
@@ -152,34 +162,28 @@ fn unstake_fixture() {
     )
     .expect("Stake account record invalid data");
 
-    // 302977251897 -> previous lamports from fixtures
     let protocol_fees_earned = resulting_accounts
-        .iter()
-        .find(|a| a.0.to_bytes() == PROTOCOL_FEE_VAULT)
+        .get(4)
         .expect("Protocol fee vault should exist")
         .1
         .lamports
-        - 302977251897;
+        - protocol_fee_vault_bef;
 
-    // 409374014407718 -> previous lamports from fixtures
-    let pool_sol_reserves_delta = 409374014407718
+    let pool_sol_reserves_delta = pool_sol_reserves_bef
         - resulting_accounts
-            .iter()
-            .find(|a| a.0.to_bytes() == POOL_SOL_RESERVES)
+            .get(2)
             .expect("Pool sol reserves should exist")
             .1
             .lamports;
 
-    // 1000000000 -> previous lamports from fixtures
-    let user_delta = user_res.1.lamports - 1_000_000_000;
+    let user_delta = user_res.1.lamports - user_bef.1.lamports;
 
-    // 1002240 is the amount of SOL pool sol reserves paid for rent exemption of the record
     assert_eq!(
-        quote.referrer_fee + user_delta + protocol_fees_earned + 1002240,
+        quote.referrer_fee + user_delta + protocol_fees_earned + STAKE_ACCOUNT_RECORD_RENT,
         pool_sol_reserves_delta
     );
-    assert_eq!(stake_acc_rec_res.lamports_at_creation, 1002282880);
-    assert_eq!(quote.stake_account_lamports, 1002282880);
+    assert_eq!(stake_acc_rec_res.lamports_at_creation, stake_account_bef);
+    assert_eq!(quote.stake_account_lamports, stake_account_bef);
     assert_eq!(quote.lamports_to_unstaker, user_delta);
     assert_eq!(quote.protocol_fee, protocol_fees_earned);
     assert_eq!(quote.referrer_fee, referrer_res.1.lamports);

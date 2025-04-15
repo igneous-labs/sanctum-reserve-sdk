@@ -2,6 +2,8 @@ use const_crypto::bs58;
 
 use crate::{fee_seeds, flash_account_seeds, flash_loan_fee_seeds, protocol_fee_seeds};
 
+pub const STAKE_ACCOUNT_RECORD_RENT: u64 = 1002240;
+
 // Programs
 
 pub const UNSTAKE_PROGRAM: [u8; 32] =

@@ -6,7 +6,7 @@ use solana_account::Account;
 use solana_account_decoder_client_types::UiAccount;
 use solana_pubkey::Pubkey;
 
-use super::test_fixtures_dir;
+use super::{test_fixtures_dir, UnstakeMainnet, UnstakeMainnetKeyedAccounts};
 
 /// This is the json format of
 /// `solana account -o <FILENAME>.json --output json <ACCOUNT-PUBKEY>`
@@ -41,25 +41,18 @@ pub fn payer_account(lamports: u64) -> Account {
     Account::new(lamports, 0, &Pubkey::new_from_array(SYSTEM_PROGRAM))
 }
 
-fn test_fixtures_accounts<'a>(
-    fnames: &'a [&'a str],
-) -> impl Iterator<Item = (Pubkey, Account)> + 'a {
-    fnames.iter().map(|fname| {
-        let KeyedUiAccount { pubkey, account } = KeyedUiAccount::from_test_fixtures_file(fname);
-        (pubkey.parse().unwrap(), account.decode().unwrap())
-    })
+fn load_fixture_account(fname: &str) -> (Pubkey, Account) {
+    let KeyedUiAccount { pubkey, account } = KeyedUiAccount::from_test_fixtures_file(fname);
+    (pubkey.parse().unwrap(), account.decode().unwrap())
 }
 
-pub fn unstake_mainnet_accounts() -> impl Iterator<Item = (Pubkey, Account)> {
-    test_fixtures_accounts(
-        [
-            "fee",
-            "pool",
-            "pool-sol-reserves",
-            "protocol-fee",
-            "protocol-fee-vault",
-            "stake-account",
-        ]
-        .as_slice(),
-    )
+pub fn unstake_mainnet_accounts() -> UnstakeMainnetKeyedAccounts {
+    UnstakeMainnet([
+        load_fixture_account("fee"),
+        load_fixture_account("pool"),
+        load_fixture_account("pool-sol-reserves"),
+        load_fixture_account("protocol-fee"),
+        load_fixture_account("protocol-fee-vault"),
+        load_fixture_account("stake-account"),
+    ])
 }

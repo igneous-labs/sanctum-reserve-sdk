@@ -38,7 +38,7 @@ macro_rules! inherent_borsh_serde {
 // TODO: idk why `pub(crate) use` is not necessary for the `inherent_borsh_*` macros above,
 // probably due to module depth > 1
 
-pub trait AnchorAccount: borsh::BorshDeserialize + borsh::BorshSerialize {
+pub(crate) trait AnchorAccount: borsh::BorshDeserialize + borsh::BorshSerialize {
     const DISCM: [u8; 8];
 
     fn ser<W: borsh::io::Write>(&self, mut writer: W) -> borsh::io::Result<()> {
@@ -56,6 +56,14 @@ pub trait AnchorAccount: borsh::BorshDeserialize + borsh::BorshSerialize {
         }
         Self::deserialize_reader(&mut reader)
     }
+}
+
+macro_rules! inherent_anchor_discriminant {
+    () => {
+        pub const fn discriminant(&self) -> [u8; 8] {
+            <Self as AnchorAccount>::DISCM
+        }
+    };
 }
 
 macro_rules! inherent_anchor_ser {
@@ -78,5 +86,6 @@ macro_rules! inherent_anchor_serde {
     () => {
         inherent_anchor_ser!();
         inherent_anchor_de!();
+        inherent_anchor_discriminant!();
     };
 }
