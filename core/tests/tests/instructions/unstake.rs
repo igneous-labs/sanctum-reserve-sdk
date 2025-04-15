@@ -6,9 +6,8 @@ use mollusk_svm::{
     result::InstructionResult,
 };
 use sanctum_reserve_core::{
-    self as reserve_core, stake_account_record_seeds, UnstakeIxData, UnstakeIxPrefixKeysOwned, FEE,
-    POOL, POOL_SOL_RESERVES, PROTOCOL_FEE, PROTOCOL_FEE_VAULT, STAKE_ACCOUNT_RECORD_RENT,
-    STAKE_PROGRAM, SYSTEM_PROGRAM, SYSVAR_CLOCK, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER,
+    self as reserve_core, stake_account_record_seeds, UnstakeIxData, UnstakeIxPrefixKeysOwned,
+    POOL, STAKE_ACCOUNT_RECORD_RENT, STAKE_PROGRAM, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER,
     UNSTAKE_PROGRAM,
 };
 use solana_account::Account;
@@ -17,48 +16,7 @@ use solana_pubkey::Pubkey;
 
 use crate::common::{
     metas_from_keys_signer_writer, mollusk_unstake_prog, payer_account, unstake_mainnet_accounts,
-    KeyedUiAccount,
 };
-
-#[test]
-fn unstake_keys() {
-    let unstaker = Pubkey::from_str_const("pay1VHNPtXwQkSypEfranUVn2ToxmqqNkbYoyeHVQXj");
-    let stake_account = Pubkey::from_str_const("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh");
-
-    let stake_account_addr = stake_account.to_bytes();
-
-    let stake_account_record_seeds = stake_account_record_seeds(&POOL, &stake_account_addr);
-
-    let stake_account_record_pubkey = Pubkey::find_program_address(
-        &[
-            stake_account_record_seeds.0.as_ref(),
-            stake_account_record_seeds.1.as_ref(),
-        ],
-        &Pubkey::from(UNSTAKE_PROGRAM),
-    )
-    .0;
-
-    let keys = UnstakeIxPrefixKeysOwned::default()
-        .with_mainnet_const_pdas()
-        .with_consts()
-        .with_unstaker(unstaker.to_bytes())
-        .with_destination(unstaker.to_bytes())
-        .with_stake(stake_account.to_bytes())
-        .with_stake_account_record(stake_account_record_pubkey.to_bytes());
-
-    assert_eq!(keys.0[0], unstaker.to_bytes());
-    assert_eq!(keys.0[1], stake_account.to_bytes());
-    assert_eq!(keys.0[2], unstaker.to_bytes());
-    assert_eq!(keys.0[3], POOL);
-    assert_eq!(keys.0[4], POOL_SOL_RESERVES);
-    assert_eq!(keys.0[5], FEE);
-    assert_eq!(keys.0[6], stake_account_record_pubkey.to_bytes());
-    assert_eq!(keys.0[7], PROTOCOL_FEE);
-    assert_eq!(keys.0[8], PROTOCOL_FEE_VAULT);
-    assert_eq!(keys.0[9], SYSVAR_CLOCK);
-    assert_eq!(keys.0[10], STAKE_PROGRAM);
-    assert_eq!(keys.0[11], SYSTEM_PROGRAM);
-}
 
 #[test]
 fn unstake_fixture() {
@@ -85,16 +43,15 @@ fn unstake_fixture() {
     )
     .0;
 
-    let pool_account = KeyedUiAccount::from_test_fixtures_file("pool");
-    let pool = reserve_core::Pool::anchor_de(pool_account.account_data().as_slice()).unwrap();
+    let pool_account = &account_fixtures.pool().1;
+    let pool = reserve_core::Pool::anchor_de(pool_account.data.as_slice()).unwrap();
 
-    let fee_account = KeyedUiAccount::from_test_fixtures_file("fee");
-    let fee = reserve_core::Fee::anchor_de(fee_account.account_data().as_slice()).unwrap();
+    let fee_account = &account_fixtures.fee().1;
+    let fee = reserve_core::Fee::anchor_de(fee_account.data.as_slice()).unwrap();
 
-    let protocol_fee_account = KeyedUiAccount::from_test_fixtures_file("protocol-fee");
+    let protocol_fee_account = &account_fixtures.protocol_fee().1;
     let protocol_fee =
-        reserve_core::ProtocolFee::anchor_de(protocol_fee_account.account_data().as_slice())
-            .unwrap();
+        reserve_core::ProtocolFee::anchor_de(protocol_fee_account.data.as_slice()).unwrap();
 
     let quote = pool
         .quote_unstake(&fee, &protocol_fee, 409374014407718, 1002282880, true)
