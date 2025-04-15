@@ -60,7 +60,7 @@ pub(crate) trait AnchorAccount: borsh::BorshDeserialize + borsh::BorshSerialize 
 
 macro_rules! inherent_anchor_discriminant {
     () => {
-        pub const fn discriminant(&self) -> [u8; 8] {
+        pub const fn discriminant() -> [u8; 8] {
             <Self as AnchorAccount>::DISCM
         }
     };
