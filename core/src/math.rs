@@ -1,8 +1,8 @@
+#![allow(clippy::manual_div_ceil)]
 /// Copy-pasted from spl-math (only necessary for fee calculation)
 use uint::construct_uint;
 
 construct_uint! {
-    #[allow(clippy::manual_div_ceil)]
     pub(crate) struct U256(4);
 }
 
