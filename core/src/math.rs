@@ -2,6 +2,7 @@
 use uint::construct_uint;
 
 construct_uint! {
+    #[allow(clippy::manual_div_ceil)]
     pub(crate) struct U256(4);
 }
 
