@@ -6,9 +6,9 @@ use mollusk_svm::{
     result::InstructionResult,
 };
 use sanctum_reserve_core::{
-    self as reserve_core, stake_account_record_seeds, UnstakeIxData, UnstakeIxPrefixKeysOwned,
-    POOL, STAKE_ACCOUNT_RECORD_RENT, STAKE_PROGRAM, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER,
-    UNSTAKE_PROGRAM,
+    self as reserve_core, stake_account_record_seeds, UnstakeWsolIxData,
+    UnstakeWsolIxPrefixKeysOwned, POOL, STAKE_ACCOUNT_RECORD_RENT, STAKE_PROGRAM, UNSTAKE_PROGRAM,
+    UNSTAKE_WSOL_IX_IS_SIGNER, UNSTAKE_WSOL_IX_IS_WRITER,
 };
 use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
@@ -19,7 +19,7 @@ use crate::common::{
 };
 
 #[test]
-fn unstake_fixture() {
+fn unstake_wsol_fixture() {
     let mollusk = mollusk_unstake_prog();
 
     let account_fixtures = unstake_mainnet_accounts();
@@ -28,7 +28,8 @@ fn unstake_fixture() {
     let pool_sol_reserves_bef = account_fixtures.pool_sol_reserves().clone();
     let stake_account_bef = account_fixtures.stake_account().1.lamports;
 
-    let user = Pubkey::from_str("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap();
+    let user: Pubkey = Pubkey::from_str("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap();
+    let (dest, dest_bef) = account_fixtures.user_wsol_token().clone();
     let referrer = Pubkey::from_str("Gu7aUxceG5zETeSPRjkzYb9nfBGwwXbdkJaY7BK8xpqr").unwrap();
     let stake_account_addr = bs58::decode_pubkey("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh");
 
@@ -57,18 +58,21 @@ fn unstake_fixture() {
         .quote_unstake(&fee, &protocol_fee, 409374014407718, 1002282880, true)
         .expect("Quote should be valid");
 
-    let keys = UnstakeIxPrefixKeysOwned::default()
+    let keys = UnstakeWsolIxPrefixKeysOwned::default()
         .with_mainnet_const_pdas()
         .with_consts()
         .with_unstaker(user.to_bytes())
-        .with_destination(user.to_bytes())
+        .with_destination(dest.to_bytes())
         .with_stake(stake_account_addr)
         .with_stake_account_record(stake_account_record_pubkey.to_bytes());
 
-    let metas =
-        metas_from_keys_signer_writer(keys.0, UNSTAKE_IX_IS_SIGNER.0, UNSTAKE_IX_IS_WRITER.0);
+    let metas = metas_from_keys_signer_writer(
+        keys.0,
+        UNSTAKE_WSOL_IX_IS_SIGNER.0,
+        UNSTAKE_WSOL_IX_IS_WRITER.0,
+    );
 
-    let data = UnstakeIxData::new();
+    let data = UnstakeWsolIxData::new();
 
     let ix = Instruction {
         program_id: Pubkey::new_from_array(UNSTAKE_PROGRAM),
@@ -92,10 +96,9 @@ fn unstake_fixture() {
             (user, payer_account(1_000_000_000)),
             (stake_account_record_pubkey, Account::default()),
             (referrer, Account::default()),
+            mollusk_svm_programs_token::token::keyed_account(),
         ])
         .collect::<Vec<_>>();
-
-    let user_bef = accounts.iter().find(|a| a.0 == user).unwrap();
 
     let InstructionResult {
         raw_result,
@@ -105,7 +108,7 @@ fn unstake_fixture() {
 
     assert!(raw_result.is_ok());
 
-    let user_res = resulting_accounts.iter().find(|a| a.0 == user).unwrap();
+    let dest_res = resulting_accounts.iter().find(|a| a.0 == dest).unwrap();
 
     let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
 
@@ -136,15 +139,15 @@ fn unstake_fixture() {
             .1
             .lamports;
 
-    let user_delta = user_res.1.lamports - user_bef.1.lamports;
+    let dest_delta = dest_res.1.lamports - dest_bef.lamports;
 
     assert_eq!(
-        quote.referrer_fee + user_delta + protocol_fees_earned + STAKE_ACCOUNT_RECORD_RENT,
+        quote.referrer_fee + dest_delta + protocol_fees_earned + STAKE_ACCOUNT_RECORD_RENT,
         pool_sol_reserves_delta
     );
     assert_eq!(stake_acc_rec_res.lamports_at_creation, stake_account_bef);
     assert_eq!(quote.stake_account_lamports, stake_account_bef);
-    assert_eq!(quote.lamports_to_unstaker, user_delta);
+    assert_eq!(quote.lamports_to_unstaker, dest_delta);
     assert_eq!(quote.protocol_fee, protocol_fees_earned);
     assert_eq!(quote.referrer_fee, referrer_res.1.lamports);
 }
