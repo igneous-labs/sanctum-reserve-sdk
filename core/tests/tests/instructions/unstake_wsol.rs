@@ -24,8 +24,8 @@ fn unstake_wsol_fixture() {
 
     let account_fixtures = unstake_mainnet_accounts();
 
-    let protocol_fee_vault_bef = account_fixtures.protocol_fee_vault().1.lamports;
-    let pool_sol_reserves_bef = account_fixtures.pool_sol_reserves().1.lamports;
+    let protocol_fee_vault_bef = account_fixtures.protocol_fee_vault().clone();
+    let pool_sol_reserves_bef = account_fixtures.pool_sol_reserves().clone();
     let stake_account_bef = account_fixtures.stake_account().1.lamports;
 
     let user: Pubkey = Pubkey::from_str("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap();
@@ -108,13 +108,14 @@ fn unstake_wsol_fixture() {
 
     assert!(raw_result.is_ok());
 
-    let dest_res = resulting_accounts.get(6).unwrap();
+    let dest_res = resulting_accounts.iter().find(|a| a.0 == dest).unwrap();
 
-    let referrer_res = resulting_accounts.get(12).unwrap();
+    let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
 
     let stake_acc_rec_res = reserve_core::StakeAccountRecord::anchor_de(
         resulting_accounts
-            .get(11)
+            .iter()
+            .find(|a| a.0 == stake_account_record_pubkey)
             .expect("Stake account record should exist")
             .1
             .data
@@ -123,15 +124,17 @@ fn unstake_wsol_fixture() {
     .expect("Stake account record invalid data");
 
     let protocol_fees_earned = resulting_accounts
-        .get(4)
+        .iter()
+        .find(|a| a.0 == protocol_fee_vault_bef.0)
         .expect("Protocol fee vault should exist")
         .1
         .lamports
-        - protocol_fee_vault_bef;
+        - protocol_fee_vault_bef.1.lamports;
 
-    let pool_sol_reserves_delta = pool_sol_reserves_bef
+    let pool_sol_reserves_delta = pool_sol_reserves_bef.1.lamports
         - resulting_accounts
-            .get(2)
+            .iter()
+            .find(|a| a.0 == pool_sol_reserves_bef.0)
             .expect("Pool sol reserves should exist")
             .1
             .lamports;
