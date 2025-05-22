@@ -99,7 +99,6 @@ impl UnstakeWsolIxPrefixKeys<'_> {
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-
 pub struct UnstakeWsolIxData([u8; 8]);
 
 impl UnstakeWsolIxData {
