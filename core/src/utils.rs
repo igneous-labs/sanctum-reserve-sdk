@@ -14,12 +14,12 @@ pub struct UnstakeQuote {
     /// Output lamports, after subtracting fees
     pub lamports_to_unstaker: u64,
 
-    /// In terms of lamports
+    /// In terms of lamports, contains protocol and referrer fees
     pub fee: u64,
 
-    /// In terms of lamports
+    /// In terms of lamports, percentage of `fee`
     pub protocol_fee: u64,
 
-    /// In terms of lamports
+    /// In terms of lamports, percentage of `protocol_fee`
     pub referrer_fee: u64,
 }
