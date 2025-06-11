@@ -9,9 +9,7 @@ use crate::{internal_utils::AnchorAccount, math::PreciseNumber, PoolBalance, Rat
     derive(tsify_next::Tsify),
     tsify(into_wasm_abi, from_wasm_abi, large_number_types_as_bigints)
 )]
-pub struct Fee {
-    pub fee: FeeEnum,
-}
+pub struct Fee(pub FeeEnum);
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

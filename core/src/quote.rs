@@ -1,4 +1,4 @@
-use crate::{Fee, PoolBalance, Rational, ReserveError, STAKE_ACCOUNT_RECORD_RENT};
+use crate::{FeeEnum, PoolBalance, Rational, ReserveError, STAKE_ACCOUNT_RECORD_RENT};
 
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -71,7 +71,7 @@ pub struct ProtocolFeeRatios {
 
 pub fn quote_unstake(
     pool_balance: &PoolBalance,
-    fee_account: &Fee,
+    fee: &FeeEnum,
     ProtocolFeeRatios {
         fee_ratio: protocol_fee_fee_ratio,
         referrer_fee_ratio,
@@ -79,8 +79,7 @@ pub fn quote_unstake(
     stake_account_lamports: u64,
     with_referrer: bool,
 ) -> Result<UnstakeQuote, ReserveError> {
-    let fee_lamports = fee_account
-        .fee
+    let fee_lamports = fee
         .apply(pool_balance, stake_account_lamports)
         .ok_or(ReserveError::InternalError)?;
 

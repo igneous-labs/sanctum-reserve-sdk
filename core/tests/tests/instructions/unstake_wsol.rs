@@ -49,7 +49,7 @@ fn unstake_wsol_fixture() {
     let pool = reserve_core::Pool::anchor_de(pool_account.data.as_slice()).unwrap();
 
     let fee_account = &account_fixtures.fee().1;
-    let fee = reserve_core::Fee::anchor_de(fee_account.data.as_slice()).unwrap();
+    let reserve_core::Fee(fee) = reserve_core::Fee::anchor_de(fee_account.data.as_slice()).unwrap();
 
     let protocol_fee_account = &account_fixtures.protocol_fee().1;
     let protocol_fee =

@@ -49,10 +49,11 @@ fn test_protocol_fee_serde() {
 fn test_fee_serde() {
     let fee_account = KeyedUiAccount::from_test_fixtures_file("fee");
 
-    let fee = reserve_core::Fee::anchor_de(fee_account.account_data().as_slice()).unwrap();
+    let reserve_core::Fee(fee) =
+        reserve_core::Fee::anchor_de(fee_account.account_data().as_slice()).unwrap();
 
     assert_eq!(
-        fee.fee,
+        fee,
         reserve_core::FeeEnum::LiquidityLinear(LiquidityLinearParams {
             max_liq_remaining: reserve_core::Rational {
                 num: 1,
