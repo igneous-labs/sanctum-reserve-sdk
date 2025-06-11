@@ -1,8 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{internal_utils::AnchorAccount, ReserveError, UnstakeQuote};
-
-use super::{Fee, ProtocolFee};
+use crate::internal_utils::AnchorAccount;
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -23,63 +21,6 @@ pub struct Pool {
     /// The total SOL owned by a pool accounted for can be calculated by taking
     /// incoming_stake + pool_sol_reserves.lamports
     pub incoming_stake: u64,
-}
-
-impl Pool {
-    pub fn quote_unstake(
-        &self,
-        fee_account: &Fee,
-        protocol_fee: &ProtocolFee,
-        pool_sol_reserves: u64,
-        stake_account_lamports: u64,
-        with_referrer: bool,
-    ) -> Result<UnstakeQuote, ReserveError> {
-        let fee_lamports = fee_account
-            .fee
-            .apply(
-                self.incoming_stake,
-                pool_sol_reserves,
-                stake_account_lamports,
-            )
-            .ok_or(ReserveError::InternalError)?;
-
-        let lamports_to_unstaker = stake_account_lamports
-            .checked_sub(fee_lamports)
-            .ok_or(ReserveError::InternalError)?;
-        let protocol_fee_lamports = protocol_fee
-            .fee_ratio
-            .apply(fee_lamports)
-            .ok_or(ReserveError::InternalError)?
-            .fee();
-
-        if pool_sol_reserves < lamports_to_unstaker + protocol_fee_lamports {
-            return Err(ReserveError::NotEnoughLiquidity);
-        }
-
-        match with_referrer {
-            true => {
-                let referrer_fee_lamports = protocol_fee
-                    .referrer_fee_ratio
-                    .apply(protocol_fee_lamports)
-                    .ok_or(ReserveError::InternalError)?;
-
-                Ok(UnstakeQuote {
-                    stake_account_lamports,
-                    lamports_to_unstaker,
-                    fee: fee_lamports,
-                    protocol_fee: referrer_fee_lamports.rem(),
-                    referrer_fee: referrer_fee_lamports.fee(),
-                })
-            }
-            false => Ok(UnstakeQuote {
-                stake_account_lamports,
-                lamports_to_unstaker,
-                fee: fee_lamports,
-                protocol_fee: protocol_fee_lamports,
-                referrer_fee: 0,
-            }),
-        }
-    }
 }
 
 impl AnchorAccount for Pool {

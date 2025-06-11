@@ -5,8 +5,8 @@ edition.workspace = true
 
 [features]
 default = []
-serde = ["dep:serde", "dep:serde_bytes"]
-std = ["borsh/std", "serde?/std", "serde_bytes?/std"]
+serde = ["dep:serde"]
+std = ["borsh/std", "serde?/std"]
 wasm = ["std", "serde", "dep:tsify-next", "dep:wasm-bindgen"]
 
 [dependencies]
@@ -19,12 +19,11 @@ uint = { workspace = true }
 
 # optional
 serde = { workspace = true, default-features = false, features = ["derive"], optional = true }
-serde_bytes = { workspace = true, default-features = false, optional = true }
 tsify-next = { workspace = true, default-features = false, features = ["js"] , optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 
 [dev-dependencies]
-data-encoding = { workspace = true, features = ["alloc"] }
+proptest = { workspace = true, features = ["std"] }
 serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 mollusk-svm = { workspace = true, features = ["all-builtins"] } # needed for stake program
