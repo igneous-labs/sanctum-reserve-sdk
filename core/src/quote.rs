@@ -1,6 +1,6 @@
 use crate::{FeeEnum, PoolBalance, Rational, ReserveError, STAKE_ACCOUNT_RECORD_RENT};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "wasm",
@@ -30,7 +30,7 @@ impl UnstakeQuote {
 }
 
 /// All values in terms of lamports
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "wasm",
@@ -56,8 +56,7 @@ impl UnstakeFee {
     }
 }
 
-/// All values in terms of lamports
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "wasm",

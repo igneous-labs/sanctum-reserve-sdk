@@ -6,7 +6,7 @@ use crate::math::PreciseNumber;
 
 // TODO: derivation of Eq might be wrong since fraction equality is not necessarily bit equality,
 // but this is how upstream does it
-#[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "wasm",
