@@ -28,7 +28,7 @@ pub enum FeeEnum {
     /// Invariants:
     ///  - ratio is a valid Rational
     ///  - ratio <= 1
-    Flat { ratio: Rational },
+    Flat(Rational),
 
     /// Charges a fee based on how much liquidity
     /// a swap leaves in the liquidity pool,
@@ -41,7 +41,7 @@ pub enum FeeEnum {
     ///  - zero_liq_remaining is a valid Rational
     ///  - zero_liq_remaining <= 1
     ///  - max_liq_remaining <= zero_liq_remaining
-    LiquidityLinear { params: LiquidityLinearParams },
+    LiquidityLinear(LiquidityLinearParams),
 }
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
@@ -69,8 +69,8 @@ impl FeeEnum {
         stake_account_lamports: u64,
     ) -> Option<u64> {
         let ratio = match self {
-            Self::Flat { ratio } => ratio.into_precise_number()?,
-            Self::LiquidityLinear { params } => {
+            Self::Flat(ratio) => ratio.into_precise_number()?,
+            Self::LiquidityLinear(params) => {
                 let zero_liq_fee = params.zero_liq_remaining.into_precise_number()?;
                 let max_liq_fee = params.max_liq_remaining.into_precise_number()?;
                 let owned_lamports =

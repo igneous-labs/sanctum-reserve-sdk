@@ -53,15 +53,13 @@ fn test_fee_serde() {
 
     assert_eq!(
         fee.fee,
-        reserve_core::FeeEnum::LiquidityLinear {
-            params: LiquidityLinearParams {
-                max_liq_remaining: reserve_core::Rational {
-                    num: 1,
-                    denom: 1000
-                },
-                zero_liq_remaining: reserve_core::Rational { num: 8, denom: 100 },
-            }
-        }
+        reserve_core::FeeEnum::LiquidityLinear(LiquidityLinearParams {
+            max_liq_remaining: reserve_core::Rational {
+                num: 1,
+                denom: 1000
+            },
+            zero_liq_remaining: reserve_core::Rational { num: 8, denom: 100 },
+        })
     );
 }
 
