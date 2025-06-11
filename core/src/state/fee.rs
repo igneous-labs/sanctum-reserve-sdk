@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{internal_utils::AnchorAccount, math::PreciseNumber, Rational};
+use crate::{internal_utils::AnchorAccount, math::PreciseNumber, PoolBalance, Rational};
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -61,36 +61,45 @@ pub struct LiquidityLinearParams {
     pub zero_liq_remaining: Rational,
 }
 
-impl FeeEnum {
-    pub fn apply(
+impl LiquidityLinearParams {
+    #[inline]
+    fn to_fee_ratio(
         &self,
-        pool_incoming_stake: u64,
-        sol_reserves_lamports: u64,
+        PoolBalance {
+            pool_incoming_stake,
+            sol_reserves_lamports,
+        }: &PoolBalance,
         stake_account_lamports: u64,
-    ) -> Option<u64> {
+    ) -> Option<PreciseNumber> {
+        let zero_liq_fee = self.zero_liq_remaining.into_precise_number()?;
+        let max_liq_fee = self.max_liq_remaining.into_precise_number()?;
+        let owned_lamports =
+            (*pool_incoming_stake as u128).checked_add(*sol_reserves_lamports as u128)?;
+
+        let slope_num = zero_liq_fee.checked_sub(&max_liq_fee)?;
+        let slope_denom = PreciseNumber::new(owned_lamports)?;
+
+        let incoming_plus_stake =
+            (*pool_incoming_stake as u128).checked_add(stake_account_lamports as u128)?;
+        let num = slope_denom
+            .checked_mul(&max_liq_fee)?
+            .checked_div(&slope_num)?
+            .checked_add(&PreciseNumber::new(incoming_plus_stake)?)?;
+        let denom = slope_denom
+            .checked_div(&slope_num)?
+            .checked_add(&PreciseNumber::new(stake_account_lamports as u128)?)?;
+        num.checked_div(&denom)
+    }
+}
+
+impl FeeEnum {
+    pub fn apply(&self, pool_balance: &PoolBalance, stake_account_lamports: u64) -> Option<u64> {
         let ratio = match self {
-            Self::Flat(ratio) => ratio.into_precise_number()?,
+            Self::Flat(ratio) => ratio.into_precise_number(),
             Self::LiquidityLinear(params) => {
-                let zero_liq_fee = params.zero_liq_remaining.into_precise_number()?;
-                let max_liq_fee = params.max_liq_remaining.into_precise_number()?;
-                let owned_lamports =
-                    (pool_incoming_stake as u128).checked_add(sol_reserves_lamports as u128)?;
-
-                let slope_num = zero_liq_fee.checked_sub(&max_liq_fee)?;
-                let slope_denom = PreciseNumber::new(owned_lamports)?;
-
-                let incoming_plus_stake =
-                    (pool_incoming_stake as u128).checked_add(stake_account_lamports as u128)?;
-                let num = slope_denom
-                    .checked_mul(&max_liq_fee)?
-                    .checked_div(&slope_num)?
-                    .checked_add(&PreciseNumber::new(incoming_plus_stake)?)?;
-                let denom = slope_denom
-                    .checked_div(&slope_num)?
-                    .checked_add(&PreciseNumber::new(stake_account_lamports as u128)?)?;
-                num.checked_div(&denom)?
+                params.to_fee_ratio(pool_balance, stake_account_lamports)
             }
-        };
+        }?;
 
         PreciseNumber::new(stake_account_lamports as u128)?
             .checked_mul(&ratio)?
