@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{internal_utils::AnchorAccount, UnstakeQuote};
+use crate::{internal_utils::AnchorAccount, ReserveError, UnstakeQuote};
 
 use super::{Fee, ProtocolFee};
 
@@ -33,23 +33,37 @@ impl Pool {
         pool_sol_reserves: u64,
         stake_account_lamports: u64,
         with_referrer: bool,
-    ) -> Option<UnstakeQuote> {
-        let fee_lamports = fee_account.fee.apply(
-            self.incoming_stake,
-            pool_sol_reserves,
-            stake_account_lamports,
-        )?;
+    ) -> Result<UnstakeQuote, ReserveError> {
+        let fee_lamports = fee_account
+            .fee
+            .apply(
+                self.incoming_stake,
+                pool_sol_reserves,
+                stake_account_lamports,
+            )
+            .ok_or(ReserveError::InternalError)?;
 
-        let lamports_to_unstaker = stake_account_lamports.checked_sub(fee_lamports)?;
-        let protocol_fee_lamports = protocol_fee.fee_ratio.apply(fee_lamports)?.fee();
+        let lamports_to_unstaker = stake_account_lamports
+            .checked_sub(fee_lamports)
+            .ok_or(ReserveError::InternalError)?;
+        let protocol_fee_lamports = protocol_fee
+            .fee_ratio
+            .apply(fee_lamports)
+            .ok_or(ReserveError::InternalError)?
+            .fee();
+
+        if pool_sol_reserves < lamports_to_unstaker + protocol_fee_lamports {
+            return Err(ReserveError::NotEnoughLiquidity);
+        }
 
         match with_referrer {
             true => {
                 let referrer_fee_lamports = protocol_fee
                     .referrer_fee_ratio
-                    .apply(protocol_fee_lamports)?;
+                    .apply(protocol_fee_lamports)
+                    .ok_or(ReserveError::InternalError)?;
 
-                Some(UnstakeQuote {
+                Ok(UnstakeQuote {
                     stake_account_lamports,
                     lamports_to_unstaker,
                     fee: fee_lamports,
@@ -57,7 +71,7 @@ impl Pool {
                     referrer_fee: referrer_fee_lamports.fee(),
                 })
             }
-            false => Some(UnstakeQuote {
+            false => Ok(UnstakeQuote {
                 stake_account_lamports,
                 lamports_to_unstaker,
                 fee: fee_lamports,
