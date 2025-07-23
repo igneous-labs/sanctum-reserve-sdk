@@ -62,7 +62,7 @@ fn unstake_wsol_fixture() {
         },
         &fee,
         &protocol_fee.fee_ratios(),
-        1002282880,
+        account_fixtures.stake_account().1.lamports,
         true,
     )
     .expect("Quote should be valid");
