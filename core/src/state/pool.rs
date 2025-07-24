@@ -19,8 +19,16 @@ pub struct Pool {
     /// The last known value of total number of lamports in stake accounts
     /// owned by the pool that have not been reclaimed yet.
     /// The total SOL owned by a pool accounted for can be calculated by taking
-    /// incoming_stake + pool_sol_reserves.lamports
+    /// `incoming_stake + stake_account_record_rent_lamports + pool_sol_reserves.lamports`
     pub incoming_stake: u64,
+
+    /// The total amount of rent in lamports locked in associated
+    /// StakeAccountRecord accounts as rent-exemption. Reclaimed to reserves when the stake
+    /// account is reclaimed.
+    ///
+    /// The total SOL owned by a pool accounted for can be calculated by taking
+    /// `incoming_stake + stake_account_record_rent_lamports + pool_sol_reserves.lamports`
+    pub stake_account_record_rent_lamports: u64,
 }
 
 impl AnchorAccount for Pool {

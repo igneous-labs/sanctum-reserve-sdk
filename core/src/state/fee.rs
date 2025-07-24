@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{internal_utils::AnchorAccount, math::PreciseNumber, PoolBalance, Rational};
+use crate::{internal_utils::AnchorAccount, math::PreciseNumber, PoolUnstakeParams, Rational};
 
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -63,10 +63,10 @@ impl LiquidityLinearParams {
     #[inline]
     fn linear_params(
         &self,
-        PoolBalance {
+        PoolUnstakeParams {
             pool_incoming_stake,
             sol_reserves_lamports,
-        }: &PoolBalance,
+        }: &PoolUnstakeParams,
     ) -> Option<[PreciseNumber; 3]> {
         let zero_liq_fee = self.zero_liq_remaining.into_precise_number()?;
         let max_liq_fee = self.max_liq_remaining.into_precise_number()?;
@@ -81,7 +81,7 @@ impl LiquidityLinearParams {
     #[inline]
     fn fee_ratio(
         &self,
-        pool_balance: &PoolBalance,
+        pool_balance: &PoolUnstakeParams,
         stake_account_lamports: u64,
     ) -> Option<PreciseNumber> {
         // Reference:
@@ -102,7 +102,7 @@ impl LiquidityLinearParams {
     #[inline]
     fn reverse_fee_ratio(
         &self,
-        pool_balance: &PoolBalance,
+        pool_balance: &PoolUnstakeParams,
         lamports_after_fee: u64,
     ) -> Option<PreciseNumber> {
         // Reference:
@@ -117,14 +117,19 @@ impl LiquidityLinearParams {
 }
 
 impl FeeEnum {
+    /// Returns the total fee charged in lamports to be withheld from the user
     #[inline]
-    pub fn apply(&self, pool_balance: &PoolBalance, stake_account_lamports: u64) -> Option<u64> {
-        let ratio = match self {
+    pub fn apply(
+        &self,
+        pool_balance: &PoolUnstakeParams,
+        stake_account_lamports: u64,
+    ) -> Option<u64> {
+        let fee_ratio = match self {
             Self::Flat(ratio) => ratio.into_precise_number(),
             Self::LiquidityLinear(params) => params.fee_ratio(pool_balance, stake_account_lamports),
         }?;
         PreciseNumber::new(stake_account_lamports as u128)?
-            .checked_mul(&ratio)?
+            .checked_mul(&fee_ratio)?
             .ceiling()?
             .to_imprecise()
             .and_then(|v| u64::try_from(v).ok())
@@ -133,7 +138,7 @@ impl FeeEnum {
     #[inline]
     pub fn reverse_from_rem(
         &self,
-        pool_balance: &PoolBalance,
+        pool_balance: &PoolUnstakeParams,
         lamports_after_fee: u64,
     ) -> Option<u64> {
         let ratio = match self {
@@ -174,8 +179,8 @@ mod tests {
     prop_compose! {
         fn pool_balances()
             (pool_incoming_stake in any::<u64>())
-            (sol_reserves_lamports in 0..=(u64::MAX - pool_incoming_stake), pool_incoming_stake in Just(pool_incoming_stake)) -> PoolBalance {
-                PoolBalance { pool_incoming_stake, sol_reserves_lamports }
+            (sol_reserves_lamports in 0..=(u64::MAX - pool_incoming_stake), pool_incoming_stake in Just(pool_incoming_stake)) -> PoolUnstakeParams {
+                PoolUnstakeParams { pool_incoming_stake, sol_reserves_lamports }
             }
     }
 

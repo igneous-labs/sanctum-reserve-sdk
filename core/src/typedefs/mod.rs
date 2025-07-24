@@ -1,5 +1,5 @@
-mod pool_balance;
+mod params;
 mod rational;
 
-pub use pool_balance::*;
+pub use params::*;
 pub use rational::*;

@@ -6,9 +6,9 @@ use mollusk_svm::{
     result::InstructionResult,
 };
 use sanctum_reserve_core::{
-    self as reserve_core, quote_unstake, stake_account_record_seeds, PoolBalance, UnstakeIxData,
-    UnstakeIxPrefixKeysOwned, POOL, STAKE_ACCOUNT_RECORD_RENT, STAKE_PROGRAM, UNSTAKE_IX_IS_SIGNER,
-    UNSTAKE_IX_IS_WRITER, UNSTAKE_PROGRAM,
+    self as reserve_core, quote_unstake, stake_account_record_seeds, PoolUnstakeParams,
+    QuoteUnstakeOpts, UnstakeIxData, UnstakeIxPrefixKeysOwned, POOL, STAKE_ACCOUNT_RECORD_RENT,
+    STAKE_PROGRAM, UNSTAKE_IX_IS_SIGNER, UNSTAKE_IX_IS_WRITER, UNSTAKE_PROGRAM,
 };
 use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
@@ -16,7 +16,6 @@ use solana_pubkey::Pubkey;
 
 use crate::common::{
     metas_from_keys_signer_writer, mollusk_unstake_prog, payer_account, unstake_mainnet_accounts,
-    POOL_SOL_RESERVE_LAMPORTS,
 };
 
 #[test]
@@ -55,14 +54,17 @@ fn unstake_fixture() {
         reserve_core::ProtocolFee::anchor_de(protocol_fee_account.data.as_slice()).unwrap();
 
     let quote = quote_unstake(
-        &PoolBalance {
+        &PoolUnstakeParams {
             pool_incoming_stake: pool.incoming_stake,
-            sol_reserves_lamports: POOL_SOL_RESERVE_LAMPORTS,
+            sol_reserves_lamports: account_fixtures.pool_sol_reserves().1.lamports,
         },
         &fee,
         &protocol_fee.fee_ratios(),
-        1002282880,
-        true,
+        account_fixtures.stake_account().1.lamports,
+        &QuoteUnstakeOpts {
+            with_referrer: true,
+            ..Default::default()
+        },
     )
     .expect("Quote should be valid");
 
@@ -118,16 +120,14 @@ fn unstake_fixture() {
 
     let referrer_res = resulting_accounts.iter().find(|a| a.0 == referrer).unwrap();
 
-    let stake_acc_rec_res = reserve_core::StakeAccountRecord::anchor_de(
-        resulting_accounts
-            .iter()
-            .find(|a| a.0 == stake_account_record_pubkey)
-            .expect("Stake account record should exist")
-            .1
-            .data
-            .as_slice(),
-    )
-    .expect("Stake account record invalid data");
+    let stake_acc_rec = resulting_accounts
+        .iter()
+        .find(|a| a.0 == stake_account_record_pubkey)
+        .expect("Stake account record should exist");
+    assert_eq!(stake_acc_rec.1.lamports, STAKE_ACCOUNT_RECORD_RENT);
+    let stake_acc_rec_res =
+        reserve_core::StakeAccountRecord::anchor_de(stake_acc_rec.1.data.as_slice())
+            .expect("Stake account record invalid data");
 
     let protocol_fees_earned = resulting_accounts
         .iter()
@@ -151,10 +151,10 @@ fn unstake_fixture() {
         quote.fee.referrer + user_delta + protocol_fees_earned + STAKE_ACCOUNT_RECORD_RENT,
         pool_sol_reserves_delta
     );
-    assert_eq!(quote.reserves_lamports_outflow(), pool_sol_reserves_delta);
     assert_eq!(stake_acc_rec_res.lamports_at_creation, stake_account_bef);
     assert_eq!(quote.stake_account_lamports, stake_account_bef);
     assert_eq!(quote.lamports_to_unstaker, user_delta);
     assert_eq!(quote.fee.protocol, protocol_fees_earned);
     assert_eq!(quote.fee.referrer, referrer_res.1.lamports);
+    assert_eq!(quote.reserves_lamports_outflow(), pool_sol_reserves_delta);
 }

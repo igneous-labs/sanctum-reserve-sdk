@@ -16,7 +16,7 @@ fn test_pool_serde() {
         "3etKXcW2fzEJR5YXoSKSmP6UZ633g9uiFv5yuqFUf66k"
     );
     assert_eq!(lp_mint.str(), "uns3MbshJq1TmTyTF2iitMduevPktNKbePD73Wx4jQK");
-    assert_eq!(pool.incoming_stake, 54144272894);
+    assert_eq!(pool.incoming_stake, 54148843273);
 }
 
 #[test]
