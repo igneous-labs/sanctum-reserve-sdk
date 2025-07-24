@@ -1,7 +1,10 @@
+//! Copy-pasted from spl-math v0.1.0 because that dep is way too heavy
+//! due to it being improperly packed.
+//! (only necessary for fee calculation)
+
 // Clippy complains about `(x + (y - 1)) / y` found in the uint crate
 #![allow(clippy::manual_div_ceil)]
 
-/// Copy-pasted from spl-math (only necessary for fee calculation)
 use uint::construct_uint;
 
 construct_uint! {

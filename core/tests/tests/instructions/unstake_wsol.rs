@@ -6,9 +6,10 @@ use mollusk_svm::{
     result::InstructionResult,
 };
 use sanctum_reserve_core::{
-    self as reserve_core, quote_unstake, stake_account_record_seeds, PoolBalance,
-    UnstakeWsolIxData, UnstakeWsolIxPrefixKeysOwned, POOL, STAKE_ACCOUNT_RECORD_RENT,
-    STAKE_PROGRAM, UNSTAKE_PROGRAM, UNSTAKE_WSOL_IX_IS_SIGNER, UNSTAKE_WSOL_IX_IS_WRITER,
+    self as reserve_core, quote_unstake, stake_account_record_seeds, PoolUnstakeParams,
+    QuoteUnstakeOpts, UnstakeWsolIxData, UnstakeWsolIxPrefixKeysOwned, POOL,
+    STAKE_ACCOUNT_RECORD_RENT, STAKE_PROGRAM, UNSTAKE_PROGRAM, UNSTAKE_WSOL_IX_IS_SIGNER,
+    UNSTAKE_WSOL_IX_IS_WRITER,
 };
 use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
@@ -16,7 +17,6 @@ use solana_pubkey::Pubkey;
 
 use crate::common::{
     metas_from_keys_signer_writer, mollusk_unstake_prog, payer_account, unstake_mainnet_accounts,
-    POOL_SOL_RESERVE_LAMPORTS,
 };
 
 #[test]
@@ -56,14 +56,17 @@ fn unstake_wsol_fixture() {
         reserve_core::ProtocolFee::anchor_de(protocol_fee_account.data.as_slice()).unwrap();
 
     let quote = quote_unstake(
-        &PoolBalance {
+        &PoolUnstakeParams {
             pool_incoming_stake: pool.incoming_stake,
-            sol_reserves_lamports: POOL_SOL_RESERVE_LAMPORTS,
+            sol_reserves_lamports: account_fixtures.pool_sol_reserves().1.lamports,
         },
         &fee,
         &protocol_fee.fee_ratios(),
         account_fixtures.stake_account().1.lamports,
-        true,
+        &QuoteUnstakeOpts {
+            with_referrer: true,
+            ..Default::default()
+        },
     )
     .expect("Quote should be valid");
 
@@ -154,10 +157,10 @@ fn unstake_wsol_fixture() {
         quote.fee.referrer + dest_delta + protocol_fees_earned + STAKE_ACCOUNT_RECORD_RENT,
         pool_sol_reserves_delta
     );
-    assert_eq!(quote.reserves_lamports_outflow(), pool_sol_reserves_delta);
     assert_eq!(stake_acc_rec_res.lamports_at_creation, stake_account_bef);
     assert_eq!(quote.stake_account_lamports, stake_account_bef);
     assert_eq!(quote.lamports_to_unstaker, dest_delta);
     assert_eq!(quote.fee.protocol, protocol_fees_earned);
     assert_eq!(quote.fee.referrer, referrer_res.1.lamports);
+    assert_eq!(quote.reserves_lamports_outflow(), pool_sol_reserves_delta);
 }

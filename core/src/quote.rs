@@ -1,4 +1,4 @@
-use crate::{FeeEnum, PoolBalance, Rational, ReserveError, STAKE_ACCOUNT_RECORD_RENT};
+use crate::{FeeEnum, PoolUnstakeParams, Rational, ReserveError, STAKE_ACCOUNT_RECORD_RENT};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -68,18 +68,64 @@ pub struct ProtocolFeeRatios {
     pub referrer_fee_ratio: Rational,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct QuoteUnstakeOpts {
+    pub with_referrer: bool,
+
+    /// Lamports already existing in the corresponding `StakeAccountRecord` account.
+    ///
+    /// Usually 0. SOL reserves will fund any rent-exemption shortfall **before** calculating fees.
+    pub stake_account_record_lamports: u64,
+}
+
+impl QuoteUnstakeOpts {
+    pub const DEFAULT: Self = Self {
+        with_referrer: false,
+        stake_account_record_lamports: 0,
+    };
+}
+
+impl Default for QuoteUnstakeOpts {
+    #[inline]
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// # Usage Notes
+/// - Assumes that the `StakeAccountRecord` account is unfunded and therefore rent-exemption
+///   will be funded from the SOL reserves. `PoolBalance` param should be the current account state, **NOT**
+///   the state after this rent-exemption funding procedure; this function deducts the StakeAccountRecord
+///   rent-exemption from the balances.
 pub fn quote_unstake(
-    pool_balance: &PoolBalance,
+    PoolUnstakeParams {
+        pool_incoming_stake,
+        sol_reserves_lamports,
+    }: &PoolUnstakeParams,
     fee: &FeeEnum,
     ProtocolFeeRatios {
         fee_ratio: protocol_fee_fee_ratio,
         referrer_fee_ratio,
     }: &ProtocolFeeRatios,
     stake_account_lamports: u64,
-    with_referrer: bool,
+    QuoteUnstakeOpts {
+        with_referrer,
+        stake_account_record_lamports,
+    }: &QuoteUnstakeOpts,
 ) -> Result<UnstakeQuote, ReserveError> {
+    // Need to subtract stake account rent from sol_reserves_lamports
+    // because creating that account happens before fees are calculated
+    let stake_account_record_rent_shortfall =
+        STAKE_ACCOUNT_RECORD_RENT.saturating_sub(*stake_account_record_lamports);
+    let pool_balance = PoolUnstakeParams {
+        pool_incoming_stake: *pool_incoming_stake,
+        sol_reserves_lamports: sol_reserves_lamports
+            .checked_sub(stake_account_record_rent_shortfall)
+            .ok_or(ReserveError::NotEnoughLiquidity)?,
+    };
+
     let fee_lamports = fee
-        .apply(pool_balance, stake_account_lamports)
+        .apply(&pool_balance, stake_account_lamports)
         .ok_or(ReserveError::InternalError)?;
 
     let lamports_to_unstaker = stake_account_lamports
